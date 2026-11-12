@@ -24,6 +24,7 @@ import {
 } from './utils.js';
 import {
   calcularProducao, precoPorKg, unidadeNaVenda, custoNaUnidadeDaVenda, converterUnidade, quantidadeTotalLinha,
+  linhaDeCustoManual,
 } from './storage.js';
 
 const MANUAL = '__manual';
@@ -107,7 +108,17 @@ export function preencherProducao(liItem, producao, tipo) {
   const nota = bloco.querySelector('[data-saida="nota-legado"]');
   nota.hidden = !producao?.nota_legado;
   nota.textContent = producao?.nota_legado || '';
-  bloco.open = tipo === 'impressao_3d' || Boolean(producao?.linhas?.length || producao?.horas_unit || producao?.custo_extra);
+  const aviso = bloco.querySelector('[data-saida="aviso-conversao"]');
+  if (aviso) { aviso.hidden = true; aviso.textContent = ''; }
+  const temSalvo = Boolean(producao?.linhas?.length || producao?.horas_unit || producao?.custo_extra);
+  // Ao reabrir uma venda já calculada, o campo mostra o custo unitário resultante:
+  // não tratar esse valor como digitado à mão (senão viraria um insumo a mais).
+  if (temSalvo) {
+    const custoCampo = liItem.querySelector('[data-campo="custo_unitario"]');
+    custoCampo.readOnly = true;
+    custoCampo.classList.add('calculado');
+  }
+  bloco.open = tipo === 'impressao_3d' || temSalvo;
   atualizarProducao(liItem);
 }
 
@@ -231,8 +242,45 @@ function lerBruto(liItem) {
   };
 }
 
+/**
+ * Se o "Custo unit." tinha um valor digitado e a produção passou a calcular
+ * (horas, insumos ou extra), transforma esse valor numa linha "Outro
+ * (informar preço)" por peça — uma vez só, sem descartar em silêncio.
+ */
+function converterCustoManualSePreciso(liItem) {
+  const custoCampo = liItem.querySelector('[data-campo="custo_unitario"]');
+  if (!custoCampo || custoCampo.readOnly) return false;
+  const p = lerBruto(liItem);
+  p.linhas = p.linhas.filter((l) => !(l._escolha === '' && l.quantidade == null));
+  const temAlgo = p.linhas.length > 0 || p.horas_unit || p.custo_extra;
+  if (!temAlgo) return false;
+  const texto = custoCampo.value.trim();
+  const manual = textoParaCentavos(texto);
+  if (!texto || !Number.isFinite(manual) || manual <= 0) return false;
+  const li = adicionarLinha(liItem, linhaDeCustoManual(manual));
+  li.dataset.convertidoCusto = '1';
+  liItem.querySelector('.bloco-producao').open = true;
+  const aviso = liItem.querySelector('[data-saida="aviso-conversao"]');
+  if (aviso) {
+    aviso.hidden = false;
+    aviso.textContent = `Seu custo de ${formatarMoeda(manual)} virou um insumo por peça`;
+  }
+  return true;
+}
+
+function sincronizarAvisoConversao(liItem) {
+  const aviso = liItem.querySelector('[data-saida="aviso-conversao"]');
+  if (!aviso || aviso.hidden) return;
+  if (!liItem.querySelector('.linha-insumo[data-convertido-custo]')) {
+    aviso.hidden = true;
+    aviso.textContent = '';
+  }
+}
+
 /** Recalcula e mostra o custo do item; bloqueia/preenche o campo "Custo unit.". */
 export function atualizarProducao(liItem) {
+  converterCustoManualSePreciso(liItem);
+  sincronizarAvisoConversao(liItem);
   const bloco = liItem.querySelector('.bloco-producao');
   const qtd = qtdDoItem(liItem);
   const todas = lerBruto(liItem);

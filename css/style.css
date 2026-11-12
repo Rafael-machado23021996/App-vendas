@@ -202,6 +202,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--primaria); outli
 .aviso-saldo { margin: 0; font-size: .85rem; color: var(--texto-suave); }
 .aviso-saldo.negativo { color: var(--perigo) !important; font-weight: 700; background: var(--perigo-suave); padding: 8px 10px; border-radius: 10px; }
 .custo-3d { margin: 0; font-size: .9rem; }
+.aviso-conversao {
+  margin: 0; font-size: .9rem; font-weight: 700; color: var(--info);
+  background: var(--info-suave); padding: 8px 10px; border-radius: 10px;
+}
 .pendente-txt, .sem-preco { color: var(--alerta); font-weight: 700; }
 input.calculado { background: var(--superficie-2); color: var(--texto-suave); }
 .saldo-insumo { font-size: .85rem; font-weight: 600; color: var(--sucesso); }

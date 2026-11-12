@@ -214,6 +214,25 @@ export function calcularProducao(p, qtdItem = 1) {
   return { linhas, custo_maquina, custo_extra: extra, custo_total_item, faltando };
 }
 
+/**
+ * Converte um custo unitário digitado à mão numa linha de insumo
+ * "Outro (informar preço)", por peça, com quantidade 1.
+ * Sem preço (null/0) continua "sem preço" — nunca vira R$ 0.
+ */
+export const NOME_CUSTO_INFORMADO = 'Custo informado';
+export function linhaDeCustoManual(custoUnitarioCentavos, nome = NOME_CUSTO_INFORMADO) {
+  const cu = custoUnitarioCentavos == null || custoUnitarioCentavos === '' ? null : Number(custoUnitarioCentavos);
+  return {
+    insumo_id: null,
+    nome,
+    categoria: 'outro',
+    unidade: 'un',
+    modo: 'por_peca',
+    quantidade: 1,
+    custo_unidade: Number.isFinite(cu) && cu > 0 ? cu : null,
+  };
+}
+
 /** Total de uma linha (quantidade × preço). */
 export function totalItem(item) {
   return Math.round((Number(item.quantidade) || 0) * (Number(item.preco_unitario) || 0));
