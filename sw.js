@@ -10,7 +10,7 @@
  * Ao publicar uma nova versão, AUMENTE o número em VERSAO para que os
  * aparelhos baixem todos os arquivos novos de uma vez.
  */
-const VERSAO = 'minhas-vendas-v7';
+const VERSAO = 'minhas-vendas-v8';
 const ARQUIVOS = [
   './',
   './index.html',
