@@ -85,7 +85,7 @@ export function renderizarCards(r) {
   document.getElementById('card-lucro').classList.toggle('sem-preco', r.lucroMes == null);
   definir('card-lucro-detalhe', !r.qtdMes ? 'sem vendas no mês'
     : r.qtdSemLucro === 0 ? 'todas as vendas do mês'
-      : r.qtdComLucro === 0 ? 'falta custo/taxa nas vendas do mês'
+      : r.qtdComLucro === 0 ? 'falta custo ou frete nas vendas do mês'
         : `mês atual, parcial: ${r.qtdSemLucro} ${r.qtdSemLucro === 1 ? 'venda sem custo completo fica' : 'vendas sem custo completo ficam'} fora`);
   definir('card-entregar-atrasadas', r.qtdAtrasadas ? `${r.qtdAtrasadas} com prazo vencido` : r.qtdAEntregar ? 'vendas fechadas não entregues' : 'tudo entregue');
 }
