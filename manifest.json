@@ -1,0 +1,22 @@
+{
+  "name": "Minhas Vendas",
+  "short_name": "Vendas",
+  "description": "Registre suas vendas em segundos e acompanhe faturamento, lucro e quem falta pagar. Funciona offline.",
+  "lang": "pt-BR",
+  "start_url": "./index.html#painel",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6fb",
+  "theme_color": "#4f46e5",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Nova venda", "url": "./index.html#nova", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
