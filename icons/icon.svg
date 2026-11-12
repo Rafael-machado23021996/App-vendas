@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Ícone do app: fundo roxo com um "recibo" e um gráfico subindo -->
+  <rect width="512" height="512" rx="112" fill="#4f46e5"/>
+  <rect x="136" y="108" width="240" height="300" rx="28" fill="#ffffff"/>
+  <rect x="172" y="152" width="120" height="20" rx="10" fill="#c7c4fb"/>
+  <rect x="172" y="192" width="168" height="20" rx="10" fill="#c7c4fb"/>
+  <rect x="180" y="300" width="32" height="64" rx="8" fill="#4f46e5"/>
+  <rect x="240" y="268" width="32" height="96" rx="8" fill="#4f46e5"/>
+  <rect x="300" y="236" width="32" height="128" rx="8" fill="#0f8a5f"/>
+</svg>

@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover: usa a tela toda (respeitando as áreas seguras via env(safe-area-inset-*));
+       interactive-widget=resizes-content: no Android, o teclado encolhe a página em vez de cobri-la -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Minhas Vendas</title>
+  <meta name="description" content="App simples para registrar e acompanhar suas vendas. Funciona offline.">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Vendas">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Aplica o tema salvo antes de desenhar a página (evita "piscar" claro/escuro) -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('appVendas.tema');
+      if (t) document.documentElement.dataset.tema = t;
+    })();
+  </script>
+</head>
+<body>
+  <!-- ===================== Cabeçalho ===================== -->
+  <header class="topo">
+    <div class="topo-conteudo">
+      <div class="marca">
+        <img src="icons/icon.svg" alt="" width="32" height="32">
+        <span>Minhas Vendas</span>
+      </div>
+      <!-- Navegação para telas grandes (no celular ela vai para a barra inferior) -->
+      <nav class="nav-topo" aria-label="Seções">
+        <a href="#painel" data-rota="painel">Painel</a>
+        <a href="#nova" data-rota="nova">Nova venda</a>
+        <a href="#historico" data-rota="historico">Histórico</a>
+        <a href="#insumos" data-rota="insumos">Insumos</a>
+        <a href="#dados" data-rota="dados">Dados</a>
+      </nav>
+      <button class="botao-icone" id="botao-tema" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="conteudo">
+    <!-- Lembrete de backup (aparece se faz mais de 7 dias sem backup) -->
+    <div class="aviso-backup" id="aviso-backup" role="status" hidden>
+      <span id="aviso-backup-texto">Faz mais de 7 dias sem backup. Suas vendas só existem neste aparelho.</span>
+      <div class="botoes-linha">
+        <button type="button" class="botao botao-pequeno botao-primario" id="botao-backup-aviso">Fazer backup agora</button>
+        <button type="button" class="botao botao-pequeno" id="botao-adiar-backup">Depois</button>
+      </div>
+    </div>
+
+    <!-- Dados salvos ilegíveis: o app não grava por cima até o usuário resolver -->
+    <div class="aviso-corrompido" id="aviso-corrompido" role="alert" hidden>
+      <strong>Não foi possível ler as vendas salvas neste aparelho (dados corrompidos).</strong>
+      <span>Para não perder nada, o app <b>não vai gravar</b> nada até você resolver: restaure um backup ou baixe os dados originais para tentar recuperar.</span>
+      <small id="aviso-corrompido-copia"></small>
+      <div class="botoes-linha">
+        <button type="button" class="botao botao-pequeno botao-primario" id="botao-restaurar-corrompido">Restaurar backup</button>
+        <button type="button" class="botao botao-pequeno" id="botao-baixar-corrompido">Baixar dados originais</button>
+      </div>
+    </div>
+
+    <!-- Faixa de aviso quando há dados de exemplo -->
+    <div class="aviso-exemplo" id="aviso-exemplo" hidden>
+      <span>Você está vendo <strong>dados de exemplo</strong>.</span>
+      <button type="button" class="botao botao-pequeno" id="botao-remover-exemplos-aviso">Remover exemplos</button>
+    </div>
+
+    <!-- ===================== Painel ===================== -->
+    <section id="tela-painel" class="tela" data-tela="painel" aria-labelledby="titulo-painel">
+      <div class="titulo-linha">
+        <h1 id="titulo-painel">Painel</h1>
+        <a class="botao botao-primario" href="#nova">+ Nova venda</a>
+      </div>
+
+      <div class="cards">
+        <article class="card card-destaque">
+          <h2>Total do dia</h2>
+          <p class="valor" id="card-total-dia">R$ 0,00</p>
+          <p class="detalhe" id="card-total-dia-qtd">0 vendas hoje</p>
+        </article>
+        <article class="card">
+          <h2>Total do mês</h2>
+          <p class="valor" id="card-total-mes">R$ 0,00</p>
+          <p class="detalhe" id="card-total-mes-rec"></p>
+        </article>
+        <article class="card">
+          <h2>Vendas no mês</h2>
+          <p class="valor" id="card-qtd-mes">0</p>
+          <p class="detalhe" id="card-qtd-mes-entrega"></p>
+        </article>
+        <article class="card">
+          <h2>Ticket médio</h2>
+          <p class="valor" id="card-ticket">R$ 0,00</p>
+          <p class="detalhe">por venda no mês</p>
+        </article>
+        <article class="card">
+          <h2>Lucro das vendas (antes de despesas e DAS)</h2>
+          <p class="valor" id="card-lucro">sem preço</p>
+          <p class="detalhe" id="card-lucro-detalhe"></p>
+        </article>
+        <article class="card">
+          <h2>Para entregar</h2>
+          <p class="valor" id="card-entregar">0</p>
+          <p class="detalhe" id="card-entregar-atrasadas"></p>
+        </article>
+        <article class="card card-alerta">
+          <h2>A receber</h2>
+          <p class="valor" id="card-pendente">R$ 0,00</p>
+          <p class="detalhe" id="card-pendente-qtd">0 vendas a receber</p>
+          <p class="detalhe" id="card-orcamentos"></p>
+        </article>
+      </div>
+
+      <article class="card grafico-card">
+        <div class="titulo-linha">
+          <h2>Vendas por dia</h2>
+          <div class="segmentado" role="group" aria-label="Período do gráfico">
+            <button type="button" data-dias="7" class="ativo">7 dias</button>
+            <button type="button" data-dias="30">30 dias</button>
+          </div>
+        </div>
+        <div id="grafico" class="grafico"></div>
+        <p class="detalhe" id="grafico-total"></p>
+      </article>
+
+      <article class="card">
+        <div class="titulo-linha">
+          <h2>Últimas vendas</h2>
+          <a href="#historico" class="link">Ver todas</a>
+        </div>
+        <ul class="lista-vendas" id="ultimas-vendas"></ul>
+      </article>
+    </section>
+
+    <!-- ===================== Formulário (nova / editar) ===================== -->
+    <section id="tela-nova" class="tela" data-tela="nova" aria-labelledby="titulo-form" hidden>
+      <h1 id="titulo-form">Nova venda</h1>
+      <form id="form-venda" class="formulario" novalidate autocomplete="off">
+        <input type="hidden" name="id">
+
+        <!-- Itens da venda: cada linha é criada pelo JS a partir do <template> abaixo -->
+        <div class="card bloco">
+          <div class="titulo-linha">
+            <h2>Itens</h2>
+            <span class="detalhe" id="numero-venda"></span>
+          </div>
+          <ol class="itens" id="lista-itens"></ol>
+          <small class="erro" data-erro="itens"></small>
+          <button type="button" class="botao botao-tracejado" id="botao-add-item">+ Adicionar item</button>
+          <datalist id="sugestoes-produtos"></datalist>
+        </div>
+
+        <!-- Totais calculados ao vivo -->
+        <div class="card bloco totais">
+          <div class="linha-total"><span>Subtotal dos itens</span><strong id="t-subtotal">R$ 0,00</strong></div>
+          <div class="grade-2">
+            <div class="campo">
+              <label for="f-desconto">Desconto (R$)</label>
+              <input id="f-desconto" name="desconto" type="text" inputmode="decimal" placeholder="0,00">
+              <small class="erro" data-erro="desconto"></small>
+            </div>
+            <div class="campo">
+              <label for="f-frete">Frete cobrado (R$)</label>
+              <input id="f-frete" name="frete_cobrado" type="text" inputmode="decimal" placeholder="0,00">
+              <small class="erro" data-erro="frete_cobrado"></small>
+            </div>
+          </div>
+          <!-- Custos da venda que entram no lucro (opcionais) -->
+          <div class="grade-2">
+            <div class="campo">
+              <label for="f-taxa">Taxa do pagamento (R$)</label>
+              <input id="f-taxa" name="taxa_pagamento" type="text" inputmode="decimal" placeholder="Ex.: 3,50">
+              <small class="erro" data-erro="taxa_pagamento"></small>
+            </div>
+            <div class="campo">
+              <label for="f-frete-custo">Custo do frete (R$)</label>
+              <input id="f-frete-custo" name="frete_custo" type="text" inputmode="decimal" placeholder="o que você pagou">
+              <small class="erro" data-erro="frete_custo"></small>
+            </div>
+          </div>
+          <small class="ajuda">Taxa em branco = R$ 0 em qualquer forma de pagamento (Pix, dinheiro, cartão ou outro).</small>
+          <div class="campo">
+            <label for="f-total">Valor total (R$)</label>
+            <input id="f-total" name="total" type="text" inputmode="decimal" class="input-total" placeholder="0,00">
+            <small class="ajuda">Calculado: itens − desconto + frete. Se você digitar outro total, a diferença vira desconto.</small>
+            <small class="erro" data-erro="total"></small>
+          </div>
+          <div class="linha-total linha-lucro"><span>Lucro da venda</span><strong id="t-lucro">sem preço</strong></div>
+          <small class="ajuda" id="t-lucro-detalhe"></small>
+        </div>
+
+        <div class="card bloco">
+          <fieldset class="campo">
+            <legend>Status</legend>
+            <div class="opcoes opcoes-status">
+              <label class="opcao opcao-orcamento"><input type="radio" name="status" value="orcamento"><span>Orçamento</span></label>
+              <label class="opcao opcao-pendente"><input type="radio" name="status" value="pendente"><span>Pendente</span></label>
+              <label class="opcao opcao-pago"><input type="radio" name="status" value="pago" checked><span>Pago</span></label>
+              <label class="opcao opcao-cancelado"><input type="radio" name="status" value="cancelado"><span>Cancelado</span></label>
+            </div>
+          </fieldset>
+
+          <!-- Entrega é separada do pagamento: dá para estar entregue e ainda devendo -->
+          <label class="interruptor">
+            <input type="checkbox" name="entregue" id="f-entregue">
+            <span class="interruptor-trilho" aria-hidden="true"></span>
+            <span>Já entregue ao cliente</span>
+          </label>
+
+          <fieldset class="campo">
+            <legend>Forma de pagamento</legend>
+            <div class="opcoes">
+              <label class="opcao"><input type="radio" name="forma_pagamento" value="pix" checked><span>Pix</span></label>
+              <label class="opcao"><input type="radio" name="forma_pagamento" value="dinheiro"><span>Dinheiro</span></label>
+              <label class="opcao"><input type="radio" name="forma_pagamento" value="cartao"><span>Cartão</span></label>
+              <label class="opcao"><input type="radio" name="forma_pagamento" value="outro"><span>Outro</span></label>
+            </div>
+          </fieldset>
+
+          <div class="grade-2">
+            <div class="campo">
+              <label for="f-data">Data da venda *</label>
+              <input id="f-data" name="data_venda" type="date" required>
+              <small class="erro" data-erro="data_venda"></small>
+            </div>
+            <div class="campo">
+              <label for="f-cliente">Cliente</label>
+              <input id="f-cliente" name="cliente_nome" type="text" maxlength="120" list="sugestoes-clientes" placeholder="Opcional">
+              <datalist id="sugestoes-clientes"></datalist>
+            </div>
+          </div>
+
+          <!-- Campos menos usados ficam recolhidos para o cadastro continuar rápido -->
+          <details class="mais-detalhes" id="mais-detalhes">
+            <summary>Mais detalhes (WhatsApp, canal, entrega, observações)</summary>
+            <div class="grade-2">
+              <div class="campo">
+                <label for="f-whatsapp">WhatsApp do cliente</label>
+                <input id="f-whatsapp" name="cliente_whatsapp" type="tel" inputmode="tel" maxlength="30" placeholder="(11) 91234-5678">
+              </div>
+              <div class="campo">
+                <label for="f-canal">Canal da venda</label>
+                <select id="f-canal" name="canal"></select>
+              </div>
+              <div class="campo">
+                <label for="f-entrega">Entrega prevista</label>
+                <input id="f-entrega" name="data_entrega_prevista" type="date">
+              </div>
+            </div>
+            <div class="campo">
+              <label for="f-obs">Observações</label>
+              <textarea id="f-obs" name="observacoes" rows="3" maxlength="1000" placeholder="Ex.: entregar sábado, cor azul..."></textarea>
+            </div>
+          </details>
+        </div>
+
+        <div class="acoes-form acoes-fixas">
+          <button type="button" class="botao" id="botao-cancelar">Cancelar</button>
+          <button type="submit" class="botao botao-primario" id="botao-salvar">Salvar venda</button>
+        </div>
+      </form>
+
+      <!-- Modelo de uma linha de item (clonado pelo JS) -->
+      <template id="modelo-item">
+        <li class="item-form">
+          <div class="item-form-topo">
+            <span class="item-num"></span>
+            <button type="button" class="botao-icone pequeno" data-acao="remover-item" aria-label="Remover item" title="Remover item">✕</button>
+          </div>
+          <div class="campo">
+            <label>Produto ou serviço *</label>
+            <input data-campo="descricao" type="text" maxlength="120" list="sugestoes-produtos" placeholder="Ex.: Chaveiro personalizado">
+            <small class="erro" data-erro-item="descricao"></small>
+          </div>
+          <div class="grade-item">
+            <div class="campo campo-tipo">
+              <label>Tipo</label>
+              <select data-campo="tipo"></select>
+            </div>
+            <div class="campo">
+              <label title="Quantidade">Qtd. *</label>
+              <input data-campo="quantidade" type="text" inputmode="decimal" value="1">
+              <small class="erro" data-erro-item="quantidade"></small>
+            </div>
+            <div class="campo">
+              <label>Preço unit. (R$) *</label>
+              <input data-campo="preco_unitario" type="text" inputmode="decimal" placeholder="0,00">
+              <small class="erro" data-erro-item="preco_unitario"></small>
+            </div>
+            <div class="campo">
+              <label title="Custo unitário (opcional)">Custo unit.</label>
+              <input data-campo="custo_unitario" type="text" inputmode="decimal" placeholder="opcional">
+            </div>
+          </div>
+          <!-- Preço sugerido = custo × (1 + markup%). Sem markup ou sem custo: não sugere. -->
+          <div class="sugerido">
+            <span data-saida="sugerido"></span>
+            <button type="button" class="botao botao-pequeno" data-acao="usar-sugerido" hidden>Usar</button>
+          </div>
+          <!-- Custo de produção: insumos (filamento, LED, parafuso...) + horas de máquina.
+               Aberto automaticamente para "Impressão 3D"; opcional nos outros tipos. -->
+          <details class="bloco-producao">
+            <summary>Custo de produção <span class="resumo-producao" data-saida="resumo-producao"></span></summary>
+            <ol class="linhas-insumo"></ol>
+            <small class="ajuda" data-saida="sem-insumos" hidden>Nenhum insumo cadastrado ainda. <a href="#insumos">Cadastrar insumos</a> ou escolha "Outro (informar preço)".</small>
+            <button type="button" class="botao botao-tracejado" data-acao="add-linha">+ Adicionar insumo</button>
+            <div class="grade-3d">
+              <div class="campo">
+                <label title="Horas de máquina por unidade">Horas por peça</label>
+                <input data-p="horas_unit" type="text" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="campo">
+                <label title="R$ por hora de máquina">R$/hora máquina</label>
+                <input data-p="custo_hora" type="text" inputmode="decimal" placeholder="1,50">
+              </div>
+              <div class="campo">
+                <label title="Custo extra do item (R$)">Custo extra (R$)</label>
+                <input data-p="custo_extra" type="text" inputmode="decimal" placeholder="pintura, frete do insumo…">
+              </div>
+              <div class="campo"><label>Cor</label><input data-p="cor" type="text" maxlength="40" placeholder="branco"></div>
+              <div class="campo campo-largo"><label>Link do modelo</label><input data-p="link_modelo" type="url" inputmode="url" placeholder="https://..."></div>
+            </div>
+            <p class="custo-3d" data-saida="custo-producao"></p>
+            <small class="ajuda" data-saida="nota-legado" hidden></small>
+            <small class="erro" data-erro-item="producao"></small>
+          </details>
+          <div class="item-form-rodape"><span>Total do item</span><strong data-saida="total">R$ 0,00</strong></div>
+        </li>
+      </template>
+
+      <!-- Modelo de uma linha de insumo dentro do item (clonado pelo JS) -->
+      <template id="modelo-linha-insumo">
+        <li class="linha-insumo">
+          <div class="linha-insumo-topo">
+            <select data-l="insumo_id" aria-label="Insumo"></select>
+            <button type="button" class="botao-icone pequeno" data-acao="remover-linha" aria-label="Remover insumo" title="Remover insumo">✕</button>
+          </div>
+          <small class="preco-insumo" data-saida="preco-insumo" hidden></small>
+          <div class="grade-linha">
+            <div class="campo">
+              <label>Conta</label>
+              <select data-l="modo" aria-label="Como contar este insumo">
+                <!-- Valor salvo continua 'por_linha' (compatível com backups); só o texto mudou. -->
+                <option value="por_peca" title="multiplica pela quantidade do item">por peça</option>
+                <option value="por_linha" title="conta uma vez só no pedido">por pedido</option>
+              </select>
+            </div>
+            <div class="campo" data-manual hidden>
+              <label>Nome do insumo *</label>
+              <input data-l="nome" type="text" maxlength="80" placeholder="Ex.: cola instantânea">
+            </div>
+            <div class="campo" data-manual hidden>
+              <label>Custo por unidade (R$) *</label>
+              <div class="campo-com-unidade">
+                <input data-l="custo_manual" type="text" inputmode="decimal" placeholder="0,00">
+                <select data-l="unidade" aria-label="Unidade"></select>
+              </div>
+            </div>
+            <div class="campo">
+              <label>Quantidade *</label>
+              <div class="campo-com-unidade">
+                <input data-l="quantidade" type="text" inputmode="decimal" placeholder="0">
+                <span class="unidade-saida" data-saida="unidade"></span>
+              </div>
+            </div>
+          </div>
+          <div class="linha-insumo-rodape"><span data-saida="custo-unit-linha"></span><strong data-saida="custo-linha">—</strong></div>
+          <p class="aviso-saldo" data-saida="saldo" hidden></p>
+        </li>
+      </template>
+    </section>
+
+    <!-- ===================== Histórico ===================== -->
+    <section id="tela-historico" class="tela" data-tela="historico" aria-labelledby="titulo-historico" hidden>
+      <div class="titulo-linha">
+        <h1 id="titulo-historico">Histórico</h1>
+        <button type="button" class="botao" id="botao-exportar-csv-hist">Exportar CSV</button>
+      </div>
+
+      <div class="filtros card">
+        <input type="search" id="busca" placeholder="Buscar por produto, cliente ou nº" aria-label="Buscar por produto, cliente ou número">
+        <div class="filtros-linha">
+          <label class="sr-only" for="filtro-periodo">Período</label>
+          <select id="filtro-periodo">
+            <option value="todos">Todo o período</option>
+            <option value="hoje">Hoje</option>
+            <option value="7dias">Últimos 7 dias</option>
+            <option value="mes">Este mês</option>
+          </select>
+          <label class="sr-only" for="filtro-status">Status</label>
+          <select id="filtro-status">
+            <option value="todos">Todos os status</option>
+            <option value="orcamento">Orçamentos</option>
+            <option value="pendente">Pendentes (a receber)</option>
+            <option value="pago">Pagos</option>
+            <option value="a_entregar">Falta entregar</option>
+            <option value="cancelado">Cancelados</option>
+          </select>
+          <label class="sr-only" for="filtro-tipo">Tipo de item</label>
+          <select id="filtro-tipo"><option value="todos">Todos os tipos</option></select>
+        </div>
+      </div>
+
+      <p class="resumo-filtro" id="resumo-filtro" aria-live="polite"></p>
+      <ul class="lista-vendas lista-completa" id="lista-historico"></ul>
+
+      <div class="vazio" id="historico-vazio" hidden>
+        <svg viewBox="0 0 24 24" width="48" height="48" aria-hidden="true"><path fill="currentColor" d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V5h14v14zM7 7h10v2H7zm0 4h10v2H7zm0 4h7v2H7z"/></svg>
+        <p id="historico-vazio-texto">Nenhuma venda registrada ainda.</p>
+        <div class="vazio-acoes">
+          <a href="#nova" class="botao botao-primario">Registrar a primeira venda</a>
+          <button type="button" class="botao" data-acao="carregar-exemplos">Carregar dados de exemplo</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== Materiais e insumos ===================== -->
+    <section id="tela-insumos" class="tela" data-tela="insumos" aria-labelledby="titulo-insumos" hidden>
+      <h1 id="titulo-insumos">Materiais e insumos</h1>
+      <p class="detalhe intro">Cadastre o que você compra para produzir: filamento, resina, cola, LED, fios, parafusos, embalagem… O app calcula o custo por unidade e usa no custo de produção das vendas.</p>
+
+      <form id="form-insumo" class="card bloco" novalidate autocomplete="off">
+        <input type="hidden" name="id">
+        <h2 id="titulo-form-insumo">Novo insumo</h2>
+        <div class="grade-2">
+          <div class="campo">
+            <label for="i-categoria">Categoria *</label>
+            <select id="i-categoria" name="categoria"></select>
+          </div>
+          <div class="campo">
+            <label for="i-nome">Nome</label>
+            <input id="i-nome" name="nome" type="text" maxlength="80" placeholder="Automático: tipo/categoria + cor + marca">
+          </div>
+          <div class="campo" id="campo-tipo-insumo">
+            <label for="i-tipo">Tipo (filamento/resina)</label>
+            <select id="i-tipo" name="tipo"></select>
+          </div>
+          <div class="campo">
+            <label for="i-cor">Cor</label>
+            <input id="i-cor" name="cor" type="text" maxlength="40" placeholder="Ex.: preto">
+          </div>
+          <div class="campo">
+            <label for="i-marca">Marca</label>
+            <input id="i-marca" name="marca" type="text" maxlength="60" placeholder="Opcional">
+          </div>
+          <div class="campo">
+            <label for="i-unidade">Unidade de uso *</label>
+            <select id="i-unidade" name="unidade"></select>
+            <small class="ajuda" id="i-aviso-unidade" role="status" hidden></small>
+            <small class="erro" data-erro="unidade"></small>
+          </div>
+          <div class="campo">
+            <label for="i-preco">Preço pago (R$)</label>
+            <input id="i-preco" name="preco_pago" type="text" inputmode="decimal" placeholder="Ex.: 102,50">
+            <small class="ajuda">Pode deixar vazio se não souber: o insumo fica "sem preço" (nunca R$ 0).</small>
+            <small class="erro" data-erro="preco_pago"></small>
+          </div>
+          <div class="campo">
+            <label for="i-qtd">Quantidade comprada (<span id="i-qtd-unidade">g</span>) *</label>
+            <input id="i-qtd" name="quantidade_comprada" type="text" inputmode="decimal" placeholder="Ex.: 1.000">
+            <small class="erro" data-erro="quantidade_comprada"></small>
+          </div>
+          <div class="campo" id="campo-ajuste-saldo" hidden>
+            <label for="i-ajuste">Somar ao saldo (<span id="i-ajuste-unidade">g</span>)</label>
+            <input id="i-ajuste" name="ajuste" type="text" inputmode="decimal" placeholder="Ex.: 1000 (compra) ou -50 (perda)">
+            <small class="ajuda" id="i-saldo-atual"></small>
+            <small class="erro" data-erro="ajuste"></small>
+          </div>
+        </div>
+        <p class="preco-kg-saida" id="i-custo-saida">Custo por unidade: —</p>
+        <div class="acoes-form">
+          <button type="button" class="botao" id="botao-cancelar-insumo" hidden>Cancelar edição</button>
+          <button type="submit" class="botao botao-primario" id="botao-salvar-insumo">Adicionar insumo</button>
+        </div>
+      </form>
+
+      <div class="titulo-linha">
+        <h2>Cadastrados</h2>
+        <label class="interruptor">
+          <input type="checkbox" id="mostrar-inativos">
+          <span class="interruptor-trilho" aria-hidden="true"></span>
+          <span>Mostrar inativos</span>
+        </label>
+      </div>
+      <ul class="lista-vendas lista-completa" id="lista-insumos"></ul>
+      <div class="vazio" id="insumos-vazio" hidden>
+        <p>Nenhum insumo cadastrado ainda.</p>
+      </div>
+    </section>
+
+    <!-- ===================== Dados (backup) ===================== -->
+    <section id="tela-dados" class="tela" data-tela="dados" aria-labelledby="titulo-dados" hidden>
+      <h1 id="titulo-dados">Dados, backup e configurações</h1>
+
+      <article class="card">
+        <h2>Onde ficam suas vendas?</h2>
+        <p>As vendas ficam salvas <strong>só neste aparelho, neste navegador</strong>. Se você limpar os dados do navegador ou trocar de celular, elas somem. Faça backup com frequência (uma vez por semana, por exemplo) e guarde o arquivo no Google Drive ou mande para você mesmo no WhatsApp.</p>
+        <p class="detalhe" id="info-armazenamento"></p>
+        <p class="detalhe" id="info-persistencia"></p>
+        <p class="detalhe" id="info-ultimo-backup"></p>
+      </article>
+
+      <article class="card">
+        <h2>Configurações</h2>
+        <form id="form-config" class="bloco" novalidate>
+          <div class="campo">
+            <label for="c-hora">Custo da hora de máquina (R$/hora)</label>
+            <input id="c-hora" name="custo_hora_maquina" type="text" inputmode="decimal" placeholder="1,50">
+            <small class="ajuda">Usado no custo de produção (horas × R$/hora). Padrão R$ 1,50/h, editável. Se deixar vazio e salvar, volta para 1,50.</small>
+            <small class="erro" data-erro="custo_hora_maquina"></small>
+          </div>
+          <div class="campo">
+            <label for="c-markup">Markup para preço sugerido (%)</label>
+            <input id="c-markup" name="markup_pct" type="text" inputmode="decimal" placeholder="Sem valor definido">
+            <small class="ajuda">Preço sugerido = custo × (1 + markup%). Ex.: 100% dobra o custo. Sem valor padrão: vazio = não sugere preço.</small>
+            <small class="erro" data-erro="markup_pct"></small>
+          </div>
+          <div class="acoes-form"><button type="submit" class="botao botao-primario">Salvar configurações</button></div>
+        </form>
+      </article>
+
+      <article class="card">
+        <h2>Exportar</h2>
+        <div class="botoes-linha">
+          <button type="button" class="botao botao-primario" id="botao-backup">Baixar backup (JSON)</button>
+          <button type="button" class="botao" id="botao-exportar-csv">Exportar planilha (CSV)</button>
+        </div>
+        <p class="detalhe">O JSON serve para restaurar no app. O CSV abre no Excel e no Google Planilhas.</p>
+      </article>
+
+      <article class="card">
+        <h2>Restaurar backup</h2>
+        <p>Escolha um arquivo <code>.json</code> gerado por este app.</p>
+        <div class="opcoes">
+          <label class="opcao"><input type="radio" name="modo-importacao" value="substituir" checked><span>Substituir tudo</span></label>
+          <label class="opcao"><input type="radio" name="modo-importacao" value="mesclar"><span>Juntar com as atuais</span></label>
+        </div>
+        <label class="botao" for="arquivo-importar">Escolher arquivo…</label>
+        <input type="file" id="arquivo-importar" accept=".json,application/json" class="sr-only">
+      </article>
+
+      <article class="card">
+        <h2>Dados de exemplo</h2>
+        <p>Quer ver o app funcionando antes de usar de verdade? Carregue vendas fictícias (marcadas como exemplo) e remova quando quiser, sem afetar suas vendas reais.</p>
+        <div class="botoes-linha">
+          <button type="button" class="botao" data-acao="carregar-exemplos">Carregar dados de exemplo</button>
+          <button type="button" class="botao" id="botao-remover-exemplos">Remover exemplos</button>
+        </div>
+      </article>
+
+      <!-- Só aparece quando há cópias de dados corrompidos e a gravação NÃO está bloqueada -->
+      <article class="card" id="card-copias-corrompidas" hidden>
+        <h2>Cópias de dados corrompidos</h2>
+        <p id="info-copias-corrompidas">Há cópias antigas de dados que não puderam ser lidos.</p>
+        <button type="button" class="botao" id="botao-apagar-copias">Apagar cópias antigas</button>
+      </article>
+
+      <article class="card card-perigo">
+        <h2>Zona de perigo</h2>
+        <p>Apaga todas as vendas deste aparelho. Não dá para desfazer (a não ser que você tenha um backup).</p>
+        <button type="button" class="botao botao-perigo" id="botao-apagar-tudo">Apagar todas as vendas</button>
+      </article>
+
+      <p class="detalhe rodape-versao">Minhas Vendas · protótipo v1.0 · funciona offline</p>
+    </section>
+  </main>
+
+  <!-- ===================== Barra inferior (celular) ===================== -->
+  <nav class="nav-inferior" aria-label="Seções">
+    <a href="#painel" data-rota="painel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+      <span>Painel</span>
+    </a>
+    <a href="#historico" data-rota="historico">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>
+      <span>Histórico</span>
+    </a>
+    <a href="#nova" data-rota="nova" class="nav-destaque" aria-label="Nova venda">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <span>Nova</span>
+    </a>
+    <a href="#insumos" data-rota="insumos" aria-label="Materiais e insumos">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+      <span>Insumos</span>
+    </a>
+    <a href="#dados" data-rota="dados">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2zm6 12c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V17zm0-5c0 .5-2.13 2-6 2s-6-1.5-6-2V9.77C7.61 10.55 9.72 11 12 11s4.39-.45 6-1.23V12z"/></svg>
+      <span>Dados</span>
+    </a>
+  </nav>
+
+  <!-- Caixa de confirmação (excluir, apagar tudo...) -->
+  <dialog id="dialogo-confirmar" class="dialogo">
+    <form method="dialog">
+      <h2 id="dialogo-titulo">Confirmar</h2>
+      <p id="dialogo-mensagem"></p>
+      <div class="acoes-form">
+        <button value="cancelar" class="botao" id="dialogo-cancelar">Cancelar</button>
+        <button value="ok" class="botao botao-perigo" id="dialogo-ok">Excluir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Mensagens rápidas ("Venda salva!") -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toast-texto"></span>
+    <button type="button" class="toast-acao" id="toast-acao" hidden></button>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
