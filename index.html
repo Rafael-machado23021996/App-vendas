@@ -294,8 +294,9 @@
               <small class="erro" data-erro-item="preco_unitario"></small>
             </div>
             <div class="campo">
-              <label title="Custo unitário (opcional)">Custo unit.</label>
+              <label title="Custo unitário. Com horas ou insumos preenchidos, é calculado automaticamente.">Custo unit.</label>
               <input data-campo="custo_unitario" type="text" inputmode="decimal" placeholder="opcional">
+              <small class="ajuda" data-saida="ajuda-custo-unit">Com horas ou insumos, é calculado automaticamente.</small>
             </div>
           </div>
           <!-- Preço sugerido = custo × (1 + markup%). Sem markup ou sem custo: não sugere. -->
@@ -310,6 +311,7 @@
             <ol class="linhas-insumo"></ol>
             <small class="ajuda" data-saida="sem-insumos" hidden>Nenhum insumo cadastrado ainda. <a href="#insumos">Cadastrar insumos</a> ou escolha "Outro (informar preço)".</small>
             <button type="button" class="botao botao-tracejado" data-acao="add-linha">+ Adicionar insumo</button>
+            <p class="aviso-conversao" data-saida="aviso-conversao" hidden role="status"></p>
             <div class="grade-3d">
               <div class="campo">
                 <label title="Horas de máquina por unidade">Horas por peça</label>
